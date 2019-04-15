@@ -10,7 +10,7 @@ Code release for the paper **PointRCNN:3D Object Proposal Generation and Detecti
 [[arXiv]](https://arxiv.org/abs/1812.04244)&nbsp;  [[Project Page]](#)&nbsp;
 
 ## Introduction
-In this work, we propose the PointRCNN 3D object detector to directly generated accurate 3D box proposals from raw point cloud in a bottom-up manner, which are them refined in the canonical coordinate by the proposed bin-based 3D box regression loss. 
+In this work, we propose the PointRCNN 3D object detector to directly generated accurate 3D box proposals from raw point cloud in a bottom-up manner, which are then refined in the canonical coordinate by the proposed bin-based 3D box regression loss. 
 To the best of our knowledge, PointRCNN is **the first two-stage 3D object detector** for 3D object detection by using only the raw point cloud as input. PointRCNN is evaluated on the KITTI dataset and achieves state-of-the-art performance on the KITTI 3D object detection [leaderboard](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d) among all published works at the time of submission.
 
 For more details of PointRCNN, please refer to [our paper](https://arxiv.org/abs/1812.04244) or [project page](#).
@@ -81,8 +81,6 @@ You could run the following command to evaluate the pretrained model (set `RPN.L
 ```
 python eval_rcnn.py --cfg_file cfgs/default.yaml --ckpt PointRCNN.pth --batch_size 1 --eval_mode rcnn --set RPN.LOC_XZ_FINE False
 ```
-
-
 
 ## Inference
 * To evaluate a single checkpoint, run the following command with `--ckpt` to specify the checkpoint to be evaluated:
