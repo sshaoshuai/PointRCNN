@@ -164,9 +164,9 @@ All the codes supported **mutiple GPUs**, simply add the `--mgpus` argument as a
 If you find this work useful in your research, please consider cite:
 ```
 @inproceedings{shi2019pointrcnn, 
-title={PointRCNN: 3D Object Proposal Generation and Detection from Point Cloud}, 
-author={Shi, Shaoshuai and Wang, Xiaogang and Li, Hongsheng}, 
-booktitle={CVPR}, 
-year={2019} 
+    title={PointRCNN: 3D Object Proposal Generation and Detection from Point Cloud}, 
+    author={Shi, Shaoshuai and Wang, Xiaogang and Li, Hongsheng}, 
+    booktitle={CVPR}, 
+    year={2019} 
 }
 ```
