@@ -41,7 +41,10 @@ If you forget to add the `--recursive` parameter, just run the following command
 git submodule update --init --recursive
 ```
 
-b. Install the dependent python libraries like `easydict`,`tqdm`, `tensorboardX ` etc.
+b. Install the dependent python libraries using pip:
+```
+pip install scipy numba scikit-image tensorboardX pyyaml tqdm fire easydict
+```
 
 c. Build and install the `pointnet2_lib`, `iou3d`, `roipool3d` libraries by executing the following command:
 ```shell
