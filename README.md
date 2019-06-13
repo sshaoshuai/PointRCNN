@@ -5,7 +5,7 @@
 
 Code release for the paper **PointRCNN:3D Object Proposal Generation and Detection from Point Cloud**, CVPR 2019.
 
-**Authors**: [Shaoshuai Shi](https://scholar.google.com.hk/citations?user=DC9wzBgAAAAJ&hl=en), [Xiaogang Wang](http://www.ee.cuhk.edu.hk/~xgwang/), [Hongsheng Li](http://www.ee.cuhk.edu.hk/~hsli/).
+**Authors**: [Shaoshuai Shi](https://sshaoshuai.github.io/), [Xiaogang Wang](http://www.ee.cuhk.edu.hk/~xgwang/), [Hongsheng Li](http://www.ee.cuhk.edu.hk/~hsli/).
 
 [[arXiv]](https://arxiv.org/abs/1812.04244)&nbsp;  [[Project Page]](#)&nbsp;
 
@@ -161,10 +161,11 @@ All the codes supported **mutiple GPUs**, simply add the `--mgpus` argument as a
 ## Citation
 If you find this work useful in your research, please consider cite:
 ```
-@inproceedings{shi2019pointrcnn, 
-    title={PointRCNN: 3D Object Proposal Generation and Detection from Point Cloud}, 
-    author={Shi, Shaoshuai and Wang, Xiaogang and Li, Hongsheng}, 
-    booktitle={CVPR}, 
-    year={2019} 
+@InProceedings{Shi_2019_CVPR,
+    author = {Shi, Shaoshuai and Wang, Xiaogang and Li, Hongsheng},
+    title = {PointRCNN: 3D Object Proposal Generation and Detection From Point Cloud},
+    booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month = {June},
+    year = {2019}
 }
 ```
