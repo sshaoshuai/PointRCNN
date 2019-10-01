@@ -1,5 +1,8 @@
 # PointRCNN
 
+#### This is Dahai's modified version of pointRCNN, to achieve a 360-round object detection for Autonomous scenes
+
+
 ## PointRCNN: 3D Object Proposal Generation and Detection from Point Cloud
 ![teaser](https://github.com/sshaoshuai/PointRCNN/blob/master/doc/teaser.png)
 
