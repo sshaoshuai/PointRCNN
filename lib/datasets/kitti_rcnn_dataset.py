@@ -10,10 +10,13 @@ from lib.config import cfg
 
 
 class KittiRCNNDataset(KittiDataset):
+    # notice: npoints!第二阶段为固定的输入点数
     def __init__(self, root_dir, npoints=16384, split='train', classes='Car', mode='TRAIN', random_select=True,
                  logger=None, rcnn_training_roi_dir=None, rcnn_training_feature_dir=None, rcnn_eval_roi_dir=None,
                  rcnn_eval_feature_dir=None, gt_database_dir=None):
         super().__init__(root_dir=root_dir, split=split)
+        # class mapping
+        # no aug_scenes
         if classes == 'Car':
             self.classes = ('Background', 'Car')
             aug_scene_root_dir = os.path.join(root_dir, 'KITTI', 'aug_scene')
@@ -31,6 +34,7 @@ class KittiRCNNDataset(KittiDataset):
         self.num_class = self.classes.__len__()
 
         self.npoints = npoints
+        # 输入的索引 列表
         self.sample_id_list = []
         self.random_select = random_select
         self.logger = logger
@@ -53,18 +57,23 @@ class KittiRCNNDataset(KittiDataset):
         self.rcnn_training_roi_dir = rcnn_training_roi_dir
         self.rcnn_training_feature_dir = rcnn_training_feature_dir
 
+        # 标签值
         self.gt_database = None
 
+        # 从输入的list中进行随机选取
         if not self.random_select:
             self.logger.warning('random select is False')
 
+        # 限定为三种模式
         assert mode in ['TRAIN', 'EVAL', 'TEST'], 'Invalid mode: %s' % mode
         self.mode = mode
 
+        # RPN阶段或继续训练/推理
         if cfg.RPN.ENABLED:
+            #
             if gt_database_dir is not None:
                 self.gt_database = pickle.load(open(gt_database_dir, 'rb'))
-
+                # 难易程度比例,进行划分 cfg.GT_AUG_HARD_RATIO = 0.6
                 if cfg.GT_AUG_HARD_RATIO > 0:
                     easy_list, hard_list = [], []
                     for k in range(self.gt_database.__len__()):
@@ -74,21 +83,28 @@ class KittiRCNNDataset(KittiDataset):
                         else:
                             hard_list.append(obj)
                     self.gt_database = [easy_list, hard_list]
+                    # 以是否多与100个有效点对物体的难易程度进行划分
                     logger.info('Loading gt_database(easy(pt_num>100): %d, hard(pt_num<=100): %d) from %s'
                                 % (len(easy_list), len(hard_list), gt_database_dir))
                 else:
                     logger.info('Loading gt_database(%d) from %s' % (len(self.gt_database), gt_database_dir))
 
             if mode == 'TRAIN':
+                # 针对训练进行划分/预处理
                 self.preprocess_rpn_training_data()
             else:
+                # 简单处理,用于test
                 self.sample_id_list = [int(sample_id) for sample_id in self.image_idx_list]
                 self.logger.info('Load testing samples from %s' % self.imageset_dir)
                 self.logger.info('Done: total test samples %d' % len(self.sample_id_list))
+        # 以下只适用于第二阶段
         elif cfg.RCNN.ENABLED:
             for idx in range(0, self.num_sample):
+                # 来源 self.num_sample = self.image_idx_list.__len__()
                 sample_id = int(self.image_idx_list[idx])
+                # 对objects进行筛选,过滤
                 obj_list = self.filtrate_objects(self.get_label(sample_id))
+                # 过滤掉没有gt的样本
                 if len(obj_list) == 0:
                     # logger.info('No gt classes: %06d' % sample_id)
                     continue
@@ -101,11 +117,14 @@ class KittiRCNNDataset(KittiDataset):
         """
         Discard samples which don't have current classes, which will not be used for training.
         Valid sample_id is stored in self.sample_id_list
+        创建了一个sample_list,储存有效的样本索引
         """
         self.logger.info('Loading %s samples from %s ...' % (self.mode, self.label_dir))
         for idx in range(0, self.num_sample):
             sample_id = int(self.image_idx_list[idx])
             obj_list = self.filtrate_objects(self.get_label(sample_id))
+            # 如何跳过没有目标物的样本:只要不向list中进行添加即可
+            # 所以传递参数的时候传递list和正在处理的样本的idx即可对样本的信息进行把控
             if len(obj_list) == 0:
                 # self.logger.info('No gt classes: %06d' % sample_id)
                 continue
@@ -115,12 +134,15 @@ class KittiRCNNDataset(KittiDataset):
                                                                  len(self.image_idx_list)))
 
     def get_label(self, idx):
-        if idx < 10000:
-            label_file = os.path.join(self.label_dir, '%06d.txt' % idx)
-        else:
-            label_file = os.path.join(self.aug_label_dir, '%06d.txt' % idx)
+        # 有问题,以下过于依赖数据(形式)
+        # if idx < 10000:
+        #     label_file = os.path.join(self.label_dir, '%06d.txt' % idx)
+        # else:
+        #     label_file = os.path.join(self.aug_label_dir, '%06d.txt' % idx)
+        label_file = os.path.join(self.label_dir, '%06d.txt' % idx)
 
         assert os.path.exists(label_file)
+        # need debug for
         return kitti_utils.get_objects_from_label(label_file)
 
     def get_image(self, idx):
@@ -135,11 +157,13 @@ class KittiRCNNDataset(KittiDataset):
     def get_road_plane(self, idx):
         return super().get_road_plane(idx % 10000)
 
+    # 不是必须的,用于分阶段训练
     @staticmethod
     def get_rpn_features(rpn_feature_dir, idx):
         rpn_feature_file = os.path.join(rpn_feature_dir, '%06d.npy' % idx)
         rpn_xyz_file = os.path.join(rpn_feature_dir, '%06d_xyz.npy' % idx)
         rpn_intensity_file = os.path.join(rpn_feature_dir, '%06d_intensity.npy' % idx)
+        # 使用分割分数进行筛选/训练
         if cfg.RCNN.USE_SEG_SCORE:
             rpn_seg_file = os.path.join(rpn_feature_dir, '%06d_rawscore.npy' % idx)
             rpn_seg_score = np.load(rpn_seg_file).reshape(-1)
@@ -151,11 +175,13 @@ class KittiRCNNDataset(KittiDataset):
 
     def filtrate_objects(self, obj_list):
         """
+        针对目标种类的筛选
         Discard objects which are not in self.classes (or its similar classes)
         :param obj_list: list
         :return: list
         """
         type_whitelist = self.classes
+        # 训练策略:相似的目标种类合并训练,倾向于第一阶段使用
         if self.mode == 'TRAIN' and cfg.INCLUDE_SIMILAR_TYPE:
             type_whitelist = list(self.classes)
             if 'Car' in self.classes:
@@ -164,6 +190,7 @@ class KittiRCNNDataset(KittiDataset):
                 type_whitelist.append('Person_sitting')
 
         valid_obj_list = []
+        # obj_list由get_label获取
         for obj in obj_list:
             if obj.cls_type not in type_whitelist:  # rm Van, 20180928
                 continue
@@ -174,6 +201,7 @@ class KittiRCNNDataset(KittiDataset):
 
     @staticmethod
     def filtrate_dc_objects(obj_list):
+        # 过滤掉don't care类型,适用于多重目标联合训练,只排除少数几种类别的情况
         valid_obj_list = []
         for obj in obj_list:
             if obj.cls_type in ['DontCare']:
@@ -185,6 +213,7 @@ class KittiRCNNDataset(KittiDataset):
     @staticmethod
     def check_pc_range(xyz):
         """
+        适用于输入只有部分范围点云的情况
         :param xyz: [x, y, z]
         :return:
         """
@@ -197,6 +226,7 @@ class KittiRCNNDataset(KittiDataset):
     @staticmethod
     def get_valid_flag(pts_rect, pts_img, pts_rect_depth, img_shape):
         """
+        not needed
         Valid point should be in the image (and in the PC_AREA_SCOPE)
         :param pts_rect:
         :param pts_img:
@@ -244,6 +274,7 @@ class KittiRCNNDataset(KittiDataset):
             raise NotImplementedError
 
     def get_rpn_sample(self, index):
+        # 需要被修改,在第二阶段被使用
         sample_id = int(self.sample_id_list[index])
         if sample_id < 10000:
             calib = self.get_calib(sample_id)
@@ -320,12 +351,14 @@ class KittiRCNNDataset(KittiDataset):
             sample_info['pts_rect'] = ret_pts_rect
             sample_info['pts_features'] = ret_pts_features
             return sample_info
-
+        # 传递到object_list中
         gt_obj_list = self.filtrate_objects(self.get_label(sample_id))
+        # 暂时先忽略
         if cfg.GT_AUG_ENABLED and self.mode == 'TRAIN' and gt_aug_flag:
             gt_obj_list.extend(extra_gt_obj_list)
         gt_boxes3d = kitti_utils.objs_to_boxes3d(gt_obj_list)
 
+        # used for data augmented
         gt_alpha = np.zeros((gt_obj_list.__len__()), dtype=np.float32)
         for k, obj in enumerate(gt_obj_list):
             gt_alpha[k] = obj.alpha
@@ -339,6 +372,7 @@ class KittiRCNNDataset(KittiDataset):
             sample_info['aug_method'] = aug_method
 
         # prepare input
+        # default is false
         if cfg.RPN.USE_INTENSITY:
             pts_input = np.concatenate((aug_pts_rect, ret_pts_features), axis=1)  # (N, C)
         else:
@@ -356,13 +390,16 @@ class KittiRCNNDataset(KittiDataset):
         sample_info['pts_input'] = pts_input
         sample_info['pts_rect'] = aug_pts_rect
         sample_info['pts_features'] = ret_pts_features
+        sample_info['gt_boxes3d'] = aug_gt_boxes3d
+
         sample_info['rpn_cls_label'] = rpn_cls_label
         sample_info['rpn_reg_label'] = rpn_reg_label
-        sample_info['gt_boxes3d'] = aug_gt_boxes3d
         return sample_info
 
     @staticmethod
     def generate_rpn_training_labels(pts_rect, gt_boxes3d):
+        # key method for generate labels for training
+        # TODO: debug for the shape and content
         cls_label = np.zeros((pts_rect.shape[0]), dtype=np.int32)
         reg_label = np.zeros((pts_rect.shape[0], 7), dtype=np.float32)  # dx, dy, dz, ry, h, w, l
         gt_corners = kitti_utils.boxes3d_to_corners3d(gt_boxes3d, rotate=True)
@@ -370,6 +407,7 @@ class KittiRCNNDataset(KittiDataset):
         extend_gt_corners = kitti_utils.boxes3d_to_corners3d(extend_gt_boxes3d, rotate=True)
         for k in range(gt_boxes3d.shape[0]):
             box_corners = gt_corners[k]
+            # need to delete
             fg_pt_flag = kitti_utils.in_hull(pts_rect, box_corners)
             fg_pts_rect = pts_rect[fg_pt_flag]
             cls_label[fg_pt_flag] = 1
@@ -596,7 +634,8 @@ class KittiRCNNDataset(KittiDataset):
             temp_alpha = -np.sign(temp_beta) * np.pi / 2 + temp_beta + temp_ry
 
             # data augmentation
-            aug_pts, aug_boxes3d, aug_method = self.data_augmentation(aug_pts, temp_boxes3d, temp_alpha, mustaug=True, stage=2)
+            aug_pts, aug_boxes3d, aug_method = self.data_augmentation(aug_pts, temp_boxes3d, temp_alpha, mustaug=True,
+                                                                      stage=2)
             aug_roi_box3d, aug_gt_box3d = aug_boxes3d[0], aug_boxes3d[1]
             aug_gt_box3d = aug_gt_box3d.astype(gt_box3d.dtype)
 
@@ -898,7 +937,8 @@ class KittiRCNNDataset(KittiDataset):
         fg_rois_per_image = int(np.round(cfg.RCNN.FG_RATIO * cfg.RCNN.ROI_PER_IMAGE))
         fg_thresh = min(cfg.RCNN.REG_FG_THRESH, cfg.RCNN.CLS_FG_THRESH)
         fg_inds = np.nonzero(max_overlaps >= fg_thresh)[0]
-        fg_inds = np.concatenate((fg_inds, roi_assignment), axis=0)  # consider the roi which has max_overlaps with gt as fg
+        fg_inds = np.concatenate((fg_inds, roi_assignment),
+                                 axis=0)  # consider the roi which has max_overlaps with gt as fg
 
         easy_bg_inds = np.nonzero((max_overlaps < cfg.RCNN.CLS_BG_THRESH_LO))[0]
         hard_bg_inds = np.nonzero((max_overlaps < cfg.RCNN.CLS_BG_THRESH) &
@@ -914,12 +954,12 @@ class KittiRCNNDataset(KittiDataset):
             fg_inds = fg_inds[rand_num[:fg_rois_per_this_image]]
 
             # sampling bg
-            bg_rois_per_this_image = cfg.RCNN.ROI_PER_IMAGE  - fg_rois_per_this_image
+            bg_rois_per_this_image = cfg.RCNN.ROI_PER_IMAGE - fg_rois_per_this_image
             bg_inds = self.sample_bg_inds(hard_bg_inds, easy_bg_inds, bg_rois_per_this_image)
 
         elif fg_num_rois > 0 and bg_num_rois == 0:
             # sampling fg
-            rand_num = np.floor(np.random.rand(cfg.RCNN.ROI_PER_IMAGE ) * fg_num_rois)
+            rand_num = np.floor(np.random.rand(cfg.RCNN.ROI_PER_IMAGE) * fg_num_rois)
             rand_num = torch.from_numpy(rand_num).type_as(gt_boxes3d).long()
             fg_inds = fg_inds[rand_num]
             fg_rois_per_this_image = cfg.RCNN.ROI_PER_IMAGE

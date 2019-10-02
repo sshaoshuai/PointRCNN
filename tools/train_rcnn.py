@@ -18,7 +18,6 @@ import tools.train_utils.train_utils as train_utils
 from tools.train_utils.fastai_optim import OptimWrapper
 from tools.train_utils import learning_schedules_fastai as lsf
 
-
 parser = argparse.ArgumentParser(description="arg parser")
 parser.add_argument('--cfg_file', type=str, default='cfgs/default.yaml', help='specify the config for training')
 parser.add_argument("--train_mode", type=str, default='rpn', required=True, help="specify the training mode")
@@ -58,6 +57,7 @@ def create_logger(log_file):
     return logging.getLogger(__name__)
 
 
+# need to modifed, return is train_loader, test_loader (type is pytorch dataloader)
 def create_dataloader(logger):
     DATA_PATH = os.path.join('../', 'data')
 
@@ -71,9 +71,10 @@ def create_dataloader(logger):
     train_loader = DataLoader(train_set, batch_size=args.batch_size, pin_memory=True,
                               num_workers=args.workers, shuffle=True, collate_fn=train_set.collate_batch,
                               drop_last=True)
-
+    # similar with above
     if args.train_with_eval:
-        test_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.VAL_SPLIT, mode='EVAL',
+        test_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.VAL_SPLIT,
+                                    mode='EVAL',
                                     logger=logger,
                                     classes=cfg.CLASSES,
                                     rcnn_eval_roi_dir=args.rcnn_eval_roi_dir,
@@ -86,7 +87,6 @@ def create_dataloader(logger):
 
 
 def create_optimizer(model):
-
     if cfg.TRAIN.OPTIMIZER == 'adam':
         optimizer = optim.Adam(model.parameters(), lr=cfg.TRAIN.LR, weight_decay=cfg.TRAIN.WEIGHT_DECAY)
     elif cfg.TRAIN.OPTIMIZER == 'sgd':
@@ -144,10 +144,12 @@ def create_scheduler(optimizer, total_steps, last_epoch):
 
 
 if __name__ == "__main__":
+    # load default.yaml
     if args.cfg_file is not None:
         cfg_from_file(args.cfg_file)
-    cfg.TAG = os.path.splitext(os.path.basename(args.cfg_file))[0]
+    cfg.TAG = os.path.splitext(os.path.basename(args.cfg_file))[0]  # default
 
+    # 生成TAG, path_name
     if args.train_mode == 'rpn':
         cfg.RPN.ENABLED = True
         cfg.RCNN.ENABLED = False
@@ -167,6 +169,7 @@ if __name__ == "__main__":
         root_result_dir = args.output_dir
     os.makedirs(root_result_dir, exist_ok=True)
 
+    # 生成记录文件并保存
     log_file = os.path.join(root_result_dir, 'log_train.txt')
     logger = create_logger(log_file)
     logger.info('**********************Start logging**********************')
@@ -190,23 +193,29 @@ if __name__ == "__main__":
     # tensorboard log
     tb_log = SummaryWriter(log_dir=os.path.join(root_result_dir, 'tensorboard'))
 
+    # 开始修改
     # create dataloader & network & optimizer
+    # 传入ｌｏｇ文件作为变量，进行设置
     train_loader, test_loader = create_dataloader(logger)
+    # 定义数据接口,模型结构和优化器
     model = PointRCNN(num_classes=train_loader.dataset.num_class, use_xyz=True, mode='TRAIN')
     optimizer = create_optimizer(model)
 
     if args.mgpus:
         model = nn.DataParallel(model)
-    model.cuda()
+    model.cuda()  # 无论是对于模型还是数据，cuda()函数都能实现从CPU到GPU的内存迁移
 
     # load checkpoint if it is possible
     start_epoch = it = 0
     last_epoch = -1
     if args.ckpt is not None:
+        # 对数据并行是否的一个处理
         pure_model = model.module if isinstance(model, torch.nn.DataParallel) else model
+        # 加载检查点
         it, start_epoch = train_utils.load_checkpoint(pure_model, optimizer, filename=args.ckpt, logger=logger)
         last_epoch = start_epoch + 1
 
+    # 训练过程的优化,与数据无关
     lr_scheduler, bnm_scheduler = create_scheduler(optimizer, total_steps=len(train_loader) * args.epochs,
                                                    last_epoch=last_epoch)
 
@@ -214,10 +223,10 @@ if __name__ == "__main__":
         pure_model = model.module if isinstance(model, torch.nn.DataParallel) else model
         total_keys = pure_model.state_dict().keys().__len__()
         train_utils.load_part_ckpt(pure_model, filename=args.rpn_ckpt, logger=logger, total_keys=total_keys)
-
+    # 学习率热身?
     if cfg.TRAIN.LR_WARMUP and cfg.TRAIN.OPTIMIZER != 'adam_onecycle':
         lr_warmup_scheduler = train_utils.CosineWarmupLR(optimizer, T_max=cfg.TRAIN.WARMUP_EPOCH * len(train_loader),
-                                                      eta_min=cfg.TRAIN.WARMUP_MIN)
+                                                         eta_min=cfg.TRAIN.WARMUP_MIN)
     else:
         lr_warmup_scheduler = None
 

@@ -24,6 +24,7 @@ __C.GT_AUG_APPLY_PROB = 0.75
 __C.GT_AUG_HARD_RATIO = 0.6
 
 __C.PC_REDUCE_BY_RANGE = True
+# 对输入的点云范围进行限制
 __C.PC_AREA_SCOPE = np.array([[-40, 40],
                               [-1,   3],
                               [0, 70.4]])  # x, y, z scope in rect camera coords

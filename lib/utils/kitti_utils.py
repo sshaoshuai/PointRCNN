@@ -71,8 +71,10 @@ def boxes3d_to_corners3d(boxes3d, rotate=True):
     """
     boxes_num = boxes3d.shape[0]
     h, w, l = boxes3d[:, 3], boxes3d[:, 4], boxes3d[:, 5]
-    x_corners = np.array([l / 2., l / 2., -l / 2., -l / 2., l / 2., l / 2., -l / 2., -l / 2.], dtype=np.float32).T  # (N, 8)
-    z_corners = np.array([w / 2., -w / 2., -w / 2., w / 2., w / 2., -w / 2., -w / 2., w / 2.], dtype=np.float32).T  # (N, 8)
+    x_corners = np.array([l / 2., l / 2., -l / 2., -l / 2., l / 2., l / 2., -l / 2., -l / 2.], dtype=np.float32).T
+    # (N, 8)
+    z_corners = np.array([w / 2., -w / 2., -w / 2., w / 2., w / 2., -w / 2., -w / 2., w / 2.], dtype=np.float32).T
+    # (N, 8)
 
     y_corners = np.zeros((boxes_num, 8), dtype=np.float32)
     y_corners[:, 4:8] = -h.reshape(boxes_num, 1).repeat(4, axis=1)  # (N, 8)
