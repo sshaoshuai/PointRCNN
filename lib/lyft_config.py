@@ -1,3 +1,14 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+'''
+@File    :   lyft_config.py.py    
+@Contact :   alfredo2019love@outlook.com
+@License :   (C)Copyright 2019-2020, DRL_Lab-Cheng-CASIA
+
+@Modify Time      @Author    @Version    @Desciption
+------------      -------    --------    -----------
+10/4/19 3:28 PM   Cheng      1.0         init
+'''
 from easydict import EasyDict as edict
 import numpy as np
 
@@ -37,7 +48,7 @@ __C.RPN = edict()
 __C.RPN.ENABLED = True
 __C.RPN.FIXED = False
 
-__C.RPN.USE_INTENSITY = False
+__C.RPN.USE_INTENSITY = True
 
 # config of bin-based loss
 __C.RPN.LOC_XZ_FINE = False

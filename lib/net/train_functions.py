@@ -11,15 +11,19 @@ def model_joint_fn_decorator():
     MEAN_SIZE = torch.from_numpy(cfg.CLS_MEAN_SIZE[0]).cuda()
 
     def model_fn(model, data):
+        # 第一阶段从第一个if通过
         if cfg.RPN.ENABLED:
+            # pts_rect取出后没用到
             pts_rect, pts_features, pts_input = data['pts_rect'], data['pts_features'], data['pts_input']
             gt_boxes3d = data['gt_boxes3d']
 
             if not cfg.RPN.FIXED:
+                # 取标签值
                 rpn_cls_label, rpn_reg_label = data['rpn_cls_label'], data['rpn_reg_label']
                 rpn_cls_label = torch.from_numpy(rpn_cls_label).cuda(non_blocking=True).long()
                 rpn_reg_label = torch.from_numpy(rpn_reg_label).cuda(non_blocking=True).float()
 
+            # 重新构建input_data,用于训练
             inputs = torch.from_numpy(pts_input).cuda(non_blocking=True).float()
             gt_boxes3d = torch.from_numpy(gt_boxes3d).cuda(non_blocking=True).float()
             input_data = {'pts_input': inputs, 'gt_boxes3d': gt_boxes3d}

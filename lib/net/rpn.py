@@ -4,7 +4,7 @@ import numpy as np
 from lib.rpn.proposal_layer import ProposalLayer
 import pointnet2_lib.pointnet2.pytorch_utils as pt_utils
 import lib.utils.loss_utils as loss_utils
-from lib.config import cfg
+from lib.lyft_config import cfg
 import importlib
 
 
@@ -13,6 +13,7 @@ class RPN(nn.Module):
         super().__init__()
         self.training_mode = (mode == 'TRAIN')
 
+        # 没看懂这儿的输入通道数
         # __C.RPN.BACKBONE = 'pointnet2_msg'
         MODEL = importlib.import_module(cfg.RPN.BACKBONE)
         # cfg.RPN.USE_INTENSITY = True
@@ -27,7 +28,7 @@ class RPN(nn.Module):
         for k in range(0, cfg.RPN.CLS_FC.__len__()):
             cls_layers.append(pt_utils.Conv1d(pre_channel, cfg.RPN.CLS_FC[k], bn=cfg.RPN.USE_BN))
             pre_channel = cfg.RPN.CLS_FC[k]
-        # 构建分类层,pt_utils是做着自己写的模块
+        # 构建分类层,pt_utils是作者自己写的模块
         cls_layers.append(pt_utils.Conv1d(pre_channel, 1, activation=None))
         # 随机dropout
         if cfg.RPN.DP_RATIO >= 0:
