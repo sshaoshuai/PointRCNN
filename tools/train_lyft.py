@@ -29,12 +29,14 @@ from lib.lyft_config import cfg, cfg_from_file, save_config_to_file
 import tools.train_utils.train_utils as train_utils
 from tools.train_utils.fastai_optim import OptimWrapper
 from tools.train_utils import learning_schedules_fastai as lsf
+from lib.datasets.lyft_dataset import LyftDataloader
+from lyft_dataset_sdk.lyftdataset import LyftDataset
 
 parser = argparse.ArgumentParser(description="arg parser")
-parser.add_argument('--cfg_file', type=str, default='cfgs/default.yaml', help='specify the config for training')
-parser.add_argument("--train_mode", type=str, default='rpn', required=True, help="specify the training mode")
-parser.add_argument("--batch_size", type=int, default=16, required=True, help="batch size for training")
-parser.add_argument("--epochs", type=int, default=200, required=True, help="Number of epochs to train for")
+parser.add_argument('--cfg_file', type=str, default='cfgs/default_lyft.yaml', help='specify the config for training')
+parser.add_argument("--train_mode", type=str, default='rpn', required=False, help="specify the training mode")
+parser.add_argument("--batch_size", type=int, default=4, required=False, help="batch size for training")
+parser.add_argument("--epochs", type=int, default=200, required=False, help="Number of epochs to train for")
 
 parser.add_argument('--workers', type=int, default=8, help='number of workers for dataloader')
 parser.add_argument("--ckpt_save_interval", type=int, default=5, help="number of training epochs")
@@ -70,32 +72,46 @@ def create_logger(log_file):
 
 
 # need to modifed, return is train_loader, test_loader (type is pytorch dataloader)
-def create_dataloader(logger):
-    DATA_PATH = os.path.join('../', 'data')
+def create_dataloader(logger, data_path):
+    level5data = LyftDataset(data_path=data_path,
+                             json_path=data_path + '/v1.01-train', verbose=True)
 
-    # create dataloader
-    train_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.SPLIT, mode='TRAIN',
-                                 logger=logger,
-                                 classes=cfg.CLASSES,
-                                 rcnn_training_roi_dir=args.rcnn_training_roi_dir,
-                                 rcnn_training_feature_dir=args.rcnn_training_feature_dir,
-                                 gt_database_dir=args.gt_database)
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, pin_memory=True,
-                              num_workers=args.workers, shuffle=True, collate_fn=train_set.collate_batch,
-                              drop_last=True)
-    # similar with above
-    if args.train_with_eval:
-        test_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.VAL_SPLIT,
-                                    mode='EVAL',
-                                    logger=logger,
-                                    classes=cfg.CLASSES,
-                                    rcnn_eval_roi_dir=args.rcnn_eval_roi_dir,
-                                    rcnn_eval_feature_dir=args.rcnn_eval_feature_dir)
-        test_loader = DataLoader(test_set, batch_size=1, shuffle=True, pin_memory=True,
-                                 num_workers=args.workers, collate_fn=test_set.collate_batch)
-    else:
-        test_loader = None
+    from tqdm import tqdm
+
+    #
+    train_set = LyftDataloader(level5data)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True,
+                                               num_workers=args.workers, pin_memory=True,
+                                               collate_fn=train_set.collate_batch,
+                                               drop_last=True)
+    test_loader = None
+
     return train_loader, test_loader
+    # DATA_PATH = os.path.join('../', 'data')
+    #
+    # # create dataloader
+    # train_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.SPLIT, mode='TRAIN',
+    #                              logger=logger,
+    #                              classes=cfg.CLASSES,
+    #                              rcnn_training_roi_dir=args.rcnn_training_roi_dir,
+    #                              rcnn_training_feature_dir=args.rcnn_training_feature_dir,
+    #                              gt_database_dir=args.gt_database)
+    # train_loader = DataLoader(train_set, batch_size=args.batch_size, pin_memory=True,
+    #                           num_workers=args.workers, shuffle=True, collate_fn=train_set.collate_batch,
+    #                           drop_last=True)
+    # # similar with above
+    # if args.train_with_eval:
+    #     test_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.VAL_SPLIT,
+    #                                 mode='EVAL',
+    #                                 logger=logger,
+    #                                 classes=cfg.CLASSES,
+    #                                 rcnn_eval_roi_dir=args.rcnn_eval_roi_dir,
+    #                                 rcnn_eval_feature_dir=args.rcnn_eval_feature_dir)
+    #     test_loader = DataLoader(test_set, batch_size=1, shuffle=True, pin_memory=True,
+    #                              num_workers=args.workers, collate_fn=test_set.collate_batch)
+    # else:
+    #     test_loader = None
+    # return train_loader, test_loader
 
 
 def create_optimizer(model):
@@ -156,13 +172,14 @@ def create_scheduler(optimizer, total_steps, last_epoch):
 
 
 if __name__ == "__main__":
-
-
-
-
-
-
-
+    # the following arguments are required: --train_mode, --batch_size, --epochs
+    args.cfg_file = 'cfgs/default_lyft.yaml'
+    args.batch_size = 6
+    args.train_mode = 'rpn'  # 'rcnn'
+    args.epochs = 1
+    # args.ckpt_save_interval = 2
+    # args.rpn_ckpt = '.pth'
+    # python train_rcnn.py --cfg_file cfgs/default.yaml --batch_size 8 --train_mode rpn --epochs 1
 
     # load default.yaml
     if args.cfg_file is not None:
@@ -208,7 +225,7 @@ if __name__ == "__main__":
     os.makedirs(backup_dir, exist_ok=True)
     os.system('cp *.py %s/' % backup_dir)
     os.system('cp ../lib/net/*.py %s/' % backup_dir)
-    os.system('cp ../lib/datasets/kitti_rcnn_dataset.py %s/' % backup_dir)
+    os.system('cp ../lib/datasets/lyft_dataset.py %s/' % backup_dir)
 
     # tensorboard log
     tb_log = SummaryWriter(log_dir=os.path.join(root_result_dir, 'tensorboard'))
@@ -216,8 +233,9 @@ if __name__ == "__main__":
     # 开始修改
     # create dataloader & network & optimizer
     # 传入ｌｏｇ文件作为变量，进行设置
-    train_loader, test_loader = create_dataloader(logger)
+    train_loader, test_loader = create_dataloader(logger, data_path='/data/sets/lyft/v1.01-train/v1.01-train')
     # 定义数据接口,模型结构和优化器
+    # 除去animal类别,还有八类
     model = PointRCNN(num_classes=train_loader.dataset.num_class, use_xyz=True, mode='TRAIN')
     optimizer = create_optimizer(model)
 

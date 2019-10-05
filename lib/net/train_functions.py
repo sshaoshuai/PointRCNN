@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import lib.utils.loss_utils as loss_utils
-from lib.config import cfg
+from lib.lyft_config import cfg
 from collections import namedtuple
 
 
@@ -15,6 +15,7 @@ def model_joint_fn_decorator():
         if cfg.RPN.ENABLED:
             # pts_rect取出后没用到
             pts_rect, pts_features, pts_input = data['pts_rect'], data['pts_features'], data['pts_input']
+            # pts_features, pts_input = data['pts_features'], data['pts_input']
             gt_boxes3d = data['gt_boxes3d']
 
             if not cfg.RPN.FIXED:
@@ -56,7 +57,7 @@ def model_joint_fn_decorator():
 
         return ModelReturn(loss, tb_dict, disp_dict)
 
-    def get_rpn_loss(model, rpn_cls, rpn_reg, rpn_cls_label, rpn_reg_label, tb_dict):
+    def  get_rpn_loss(model, rpn_cls, rpn_reg, rpn_cls_label, rpn_reg_label, tb_dict):
         if isinstance(model, nn.DataParallel):
             rpn_cls_loss_func = model.module.rpn.rpn_cls_loss_func
         else:
@@ -67,6 +68,7 @@ def model_joint_fn_decorator():
         fg_mask = (rpn_cls_label_flat > 0)
 
         # RPN classification loss
+        # __C.RPN.LOSS_CLS = 'DiceLoss'
         if cfg.RPN.LOSS_CLS == 'DiceLoss':
             rpn_loss_cls = rpn_cls_loss_func(rpn_cls, rpn_cls_label_flat)
 

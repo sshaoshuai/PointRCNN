@@ -45,12 +45,15 @@ def convert_pointrcnn_coners(box_list, wlh_factor: float = 1.0):
     return corners_list
 
 
-def filtrate_objects(obj_list, classes=['car']):
+def filtrate_objects(obj_list, classes=None):
     """
     Discard objects which are not in self.classes (or its similar classes)
     :param obj_list: list
     :return: list
     """
+    if classes is None:
+        classes = ['car', 'bus', 'bicycle', 'emergency_vehicle', 'motorcycle', 'other_vehicle',
+                   'pedestrian', 'truck']
     type_whitelist = classes
     # if mode == 'TRAIN' and cfg.INCLUDE_SIMILAR_TYPE:
     #     type_whitelist = list(self.classes)
@@ -62,6 +65,7 @@ def filtrate_objects(obj_list, classes=['car']):
     valid_obj_list = []
     for obj in obj_list:
         if obj.name not in type_whitelist:  # rm Van, 20180928
+            print("--------------There is animals?!------------------")
             continue
         # if self.mode == 'TRAIN' and cfg.PC_REDUCE_BY_RANGE and (self.check_pc_range(obj.pos) is False):
         #     continue

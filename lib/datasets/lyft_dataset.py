@@ -27,8 +27,18 @@ from lib.utils.data_processing import convert_pointrcnn_coners, filtrate_objects
 
 
 class LyftDataloader(torch_data.Dataset):
-    def __init__(self, level5data, shuffle=True, mode='TRAIN', npoints=65536):
+    def __init__(self, level5data, shuffle=False, mode='TRAIN', npoints=65536,
+                 classes=None):
+        if classes is None:
+            classes = ['car', 'bus', 'bicycle', 'emergency_vehicle', 'motorcycle', 'other_vehicle',
+                       'pedestrian', 'truck']
+            # classes = ['car', 'bus', 'animal', 'bicycle', 'emergency_vehicle', 'motorcycle', 'other_vehicle',
+            #            'pedestrian', 'truck']
+        self.classes = classes
+        self.num_class = self.classes.__len__()
+
         self.lyft_dataset = level5data
+
         self.sample_list = level5data.sample.copy()
         self.random_select = shuffle
         self.mode = mode
@@ -36,11 +46,27 @@ class LyftDataloader(torch_data.Dataset):
         if shuffle:
             random.shuffle(self.sample_list)
 
+    # if classes == 'Car':
+    #     self.classes = ('Background', 'Car')
+    #     aug_scene_root_dir = os.path.join(root_dir, 'KITTI', 'aug_scene')
+    # elif classes == 'People':
+    #     self.classes = ('Background', 'Pedestrian', 'Cyclist')
+    # elif classes == 'Pedestrian':
+    #     self.classes = ('Background', 'Pedestrian')
+    #     aug_scene_root_dir = os.path.join(root_dir, 'KITTI', 'aug_scene_ped')
+    # elif classes == 'Cyclist':
+    #     self.classes = ('Background', 'Cyclist')
+    #     aug_scene_root_dir = os.path.join(root_dir, 'KITTI', 'aug_scene_cyclist')
+    # else:
+    #     assert False, "Invalid classes: %s" % classes
+
     def __len__(self):
         return self.sample_list.__len__()
 
     def __getitem__(self, index):
         # return lidar file path, boxes in sensor coordinate
+        sample_id = self.sample_list[index]['token']
+        if sample_id == ''
         data_path, boxes, _ = self.lyft_dataset.get_sample_data(self.sample_list[index]['data']['LIDAR_TOP'])
         lidar_pc = LidarPointCloud.from_file(data_path).points.T
 
@@ -74,7 +100,7 @@ class LyftDataloader(torch_data.Dataset):
             ret_pts_rect = pts_rect
             ret_pts_intensity = pts_intensity - 0.5
 
-        sample_info = {'sample_id': self.sample_list[index]['token'], 'random_select': self.random_select}
+        sample_info = {'sample_id': sample_id, 'random_select': self.random_select}
 
         pts_features = [ret_pts_intensity.reshape(-1, 1)]
         ret_pts_features = np.concatenate(pts_features, axis=1) if pts_features.__len__() > 1 else pts_features[0]
@@ -224,7 +250,7 @@ if __name__ == '__main__':
 
     #
     test = LyftDataloader(level5data)
-    bug_test = torch.utils.data.DataLoader(test, batch_size=18, shuffle=False,
+    bug_test = torch.utils.data.DataLoader(test, batch_size=18, shuffle=True,
                                            num_workers=6, pin_memory=True, collate_fn=test.collate_batch,
                                            drop_last=True)
     for sample_info in tqdm(bug_test):
