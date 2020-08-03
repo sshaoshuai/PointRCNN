@@ -8,9 +8,11 @@ def rotate_pc_along_y_torch(pc, rot_angle):
     :param rot_angle: (N)
     :return:
     """
+    # Convert tensor to n rows, 1 column
     cosa = torch.cos(rot_angle).view(-1, 1)
     sina = torch.sin(rot_angle).view(-1, 1)
-
+    
+    # Concatenates the given sequence of seq tensors in the given dimension (here in the dimension 1/ columns)
     raw_1 = torch.cat([cosa, -sina], dim=1)
     raw_2 = torch.cat([sina, cosa], dim=1)
     R = torch.cat((raw_1.unsqueeze(dim=1), raw_2.unsqueeze(dim=1)), dim=1)  # (N, 2, 2)
