@@ -188,7 +188,13 @@ if __name__ == "__main__":
     os.system('cp ../lib/datasets/kitti_rcnn_dataset.py %s/' % backup_dir)
 
     # tensorboard log
-    tb_log = SummaryWriter(log_dir=os.path.join(root_result_dir, 'tensorboard'))
+    try:
+        # Syntax for tensorboardX version < 1.7
+        tb_log = SummaryWriter(log_dir=os.path.join(root_result_dir, 'tensorboard'))
+    except TypeError as e:
+        # Syntax for tensorboardX version = 1.7
+        tb_log = SummaryWriter(logdir=os.path.join(root_result_dir, 'tensorboard'))
+        
 
     # create dataloader & network & optimizer
     train_loader, test_loader = create_dataloader(logger)
