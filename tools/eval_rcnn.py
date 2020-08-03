@@ -45,7 +45,7 @@ parser.add_argument('--save_result', action='store_true', default=False, help='s
 parser.add_argument('--save_rpn_feature', action='store_true', default=False,
                     help='save features for separately rcnn training and evaluation')
 
-parser.add_argument('--random_select', action='store_true', default=True, help='sample to the same number of points')
+parser.add_argument('--random_select', action='store_true', default=False, help='sample to the same number of points. If false, batch_size should be 1.')
 parser.add_argument('--start_epoch', default=0, type=int, help='ignore the checkpoint smaller than this epoch')
 parser.add_argument("--rcnn_eval_roi_dir", type=str, default=None,
                     help='specify the saved rois for rcnn evaluation when using rcnn_offline mode')
