@@ -4,6 +4,10 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#ifndef AT_CHECK
+#define AT_CHECK TORCH_CHECK
+#endif
+
 #define CHECK_CUDA(x) AT_CHECK(x.type().is_cuda(), #x, " must be a CUDAtensor ")
 #define CHECK_CONTIGUOUS(x) AT_CHECK(x.is_contiguous(), #x, " must be contiguous ")
 #define CHECK_INPUT(x) CHECK_CUDA(x);CHECK_CONTIGUOUS(x)
